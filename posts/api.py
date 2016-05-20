@@ -26,6 +26,7 @@ def posts_get():
 
     # Get the querystring arguments
     title_like = request.args.get("title_like")
+    body_like = request.args.get("body_like")
 
     # Get the posts from the database
     #posts = session.query(Post).order_by(Post.id)
@@ -36,6 +37,9 @@ def posts_get():
         posts = posts.filter(database.Post.title.contains(title_like))
     posts = posts.order_by(database.Post.id)
     
+    if body_like:
+        posts = posts.filter(database.Post.body.contains(body_like))
+    post = posts.order_by(database.Post.id)    
 
     # Convert the posts to JSON and return a response
     data = json.dumps([post.as_dictionary() for post in posts])
@@ -87,3 +91,14 @@ def posts_post():
     headers = {"Location": url_for("post_get", id=post.id)}
     return Response(data, 201, headers=headers,
                     mimetype="application/json")
+                    
+
+@app.route("/api/posts/<id>", methods=["DELETE"])
+def post_delete(id):
+    """ Delete a post """
+    
+    posts = session.query(database.Post).order_by(database.Post.id)
+    
+    
+    data = json.dumps([post.as_dictionary() for post in posts])
+    return Response(data, 200, mimetype="application/json")

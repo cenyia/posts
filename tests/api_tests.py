@@ -10,6 +10,7 @@ os.environ["CONFIG_PATH"] = "posts.config.TestingConfig"
 from posts import app
 from posts import models
 from posts.database import Base, engine, session, Post
+from posts import database
 
 class TestAPI(unittest.TestCase):
     """ Tests for the posts API """
@@ -118,9 +119,9 @@ class TestAPI(unittest.TestCase):
         
     def test_get_posts_with_title(self):
         """ Filtering posts by title """
-        postA = models.Post(title="Post with bells", body="Just a test")
-        postB = models.Post(title="Post with whistles", body="Still a test")
-        postC = models.Post(title="Post with bells and whistles",
+        postA = database.Post(title="Post with bells", body="Just a test")
+        postB = database.Post(title="Post with whistles", body="Still a test")
+        postC = database.Post(title="Post with bells and whistles",
                             body="Another test")
 
         session.add_all([postA, postB, postC])
@@ -168,7 +169,7 @@ class TestAPI(unittest.TestCase):
         self.assertEqual(data["title"], "Example Post")
         self.assertEqual(data["body"], "Just a test")
 
-        posts = session.query(models.Post).all()
+        posts = session.query(database.Post).all()
         self.assertEqual(len(posts), 1)
 
         post = posts[0]
@@ -226,6 +227,65 @@ class TestAPI(unittest.TestCase):
 
         data = json.loads(response.data.decode("ascii"))
         self.assertEqual(data["message"], "'body' is a required property")
+        
+    
+    
+    def test_delete_post(self):
+        """ Deleting a post """
+        
+        postA = database.Post(title="Example Post A", body="Just a test")
+        postB = database.Post(title="Example Post B", body="Still a test")
+
+        session.add_all([postA, postB])
+        session.commit()
+        
+        
+        response = self.client.delete("/api/posts/<id>")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.mimetype, "application/json")
+
+        data = json.loads(response.data.decode("ascii"))
+        self.assertEqual(len(data), 2)
+
+        postA = data[0]
+        self.assertEqual(postA["title"], "Example Post A")
+        self.assertEqual(postA["body"], "Just a test")
+
+        postB = data[1]
+        self.assertEqual(postB["title"], "Example Post B")
+        self.assertEqual(postB["body"], "Still a test")
+        
+        
+        
+    def test_get_posts_with_title_body(self):
+        """ Filtering posts by title & body """
+        postA = database.Post(title="Post with bells", body="Just a test")
+        postB = database.Post(title="Post with whistles", body="Still a test")
+        postC = database.Post(title="Post with bells and whistles",
+                            body="Another test")
+
+        session.add_all([postA, postB, postC])
+        session.commit()
+
+        response = self.client.get("/api/posts?title_like=whistles&body_like=test",
+            headers=[("Accept", "application/json")]
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.mimetype, "application/json")
+
+        posts = json.loads(response.data.decode("ascii"))
+        self.assertEqual(len(posts), 2)
+
+        post = posts[0]
+        self.assertEqual(post["title"], "Post with whistles")
+        self.assertEqual(post["body"], "Still a test")
+
+        post = posts[1]
+        self.assertEqual(post["title"], "Post with bells and whistles")
+        self.assertEqual(post["body"], "Another test")
+        
         
         
     
